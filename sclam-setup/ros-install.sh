@@ -9,12 +9,3 @@ sudo apt upgrade
 sudo apt install ros-galactic-desktop
 sudo apt install ros-galactic-ros-base
 sudo apt install ros-dev-tools
-
-echo "ROS 2 Galactic successfully installed. Reboot now? (Y/n): "
-read answer
-if [["$answer" == "y" || "$answer" == "Y"] || -z "$answer"]; then
-    echo "Rebooting now..."
-    sudo reboot
-else
-    echo "Reboot canceled."
-fi

@@ -1,13 +1,36 @@
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y build-essential cmake git libgtk-3-dev libvtk7-dev \
+                    libboost-all-dev libgflags-dev libgoogle-glog-dev \
+                    libhdf5-dev libatlas-base-dev libeigen3-dev \
+                    libtbb2 libtbb-dev libdc1394-22-dev libjpeg-dev \
+                    libpng-dev libtiff-dev libavcodec-dev libavformat-dev \
+                    libswscale-dev libopenexr-dev libxvidcore-dev \
+                    libx264-dev libgtk-3-dev libgphoto2-dev \
+                    libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+                    libprotobuf-dev protobuf-compiler python3-dev \
+                    python3-numpy python3-pip
+
+sudo apt install -y libvtk7-dev
+sudo apt install -y libceres-dev
+
 cd ~
-sudo apt-get install build-essential
-sudo apt-get install cmake git libgtk2.0-dev pkg-config libavcodec-dev libavformat-dev libswscale-dev g++ wget unzip
-sudo apt-get install python-dev python-numpy libtbb2 libtbb-dev libjpeg-dev libpng-dev libtiff-dev libjasper-dev libdc1394-22-dev
-sudo wget -O opencv.zip https://github.com/opencv/opencv/archive/4.x.zip
-sudo wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/4.x.zip
-sudo unzip opencv.zip
-sudo unzip opencv_contrib.zip
-sudo mkdir opencv-build
-cd opencv-build
-sudo cmake -DOPENCV_EXTRA_MODULES_PATH=../opencv_contrib-4.x/modules ../opencv-4.x
+git clone https://github.com/opencv/opencv.git
+git clone https://github.com/opencv/opencv_contrib.git
+cd opencv
+git checkout 4.2.0
+cd ../opencv_contrib
+git checkout 4.2.0
+
+cd ~/opencv
+mkdir build && cd build
+cmake -D CMAKE_BUILD_TYPE=Release \
+         -D CMAKE_INSTALL_PREFIX=/usr/local \
+         -D OPENCV_EXTRA_MODULES_PATH=~/opencv_contrib/modules \
+         -D WITH_VTK=ON \
+         -D BUILD_opencv_viz=ON \
+         -D BUILD_opencv_sfm=ON \
+         -D WITH_CERES=ON
+         ..
 sudo make -j$(nproc)
-sudo make install
+sudo make instal
+sudo ldconfig

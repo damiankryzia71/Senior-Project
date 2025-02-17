@@ -32,5 +32,5 @@ sudo cmake -D CMAKE_BUILD_TYPE=Release \
          -D WITH_CERES=ON
          ..
 sudo make -j$(nproc)
-sudo make instal
+sudo make install
 sudo ldconfig

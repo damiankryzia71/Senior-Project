@@ -29,7 +29,7 @@ sudo cmake -D CMAKE_BUILD_TYPE=Release \
          -D WITH_VTK=ON \
          -D BUILD_opencv_viz=ON \
          -D BUILD_opencv_sfm=ON \
-         -D WITH_CERES=ON
+         -D WITH_CERES=ON \
          ..
 sudo make -j$(nproc)
 sudo make install

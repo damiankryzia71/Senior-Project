@@ -100,7 +100,12 @@ unzip MH_01_easy.zip -d MH01/
 rm MH_01_easy.zip
 ```
 
-### 7. Run some examples
+### 7. Run ldconfig to Update Cache
+```bash
+sudo ldconfig
+```
+
+### 8. Run some examples
 ```bash
 cd ~/Desktop/ORB_SLAM3
 

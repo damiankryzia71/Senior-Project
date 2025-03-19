@@ -98,7 +98,7 @@ cd Datasets/EuRoc
 wget -c http://robotics.ethz.ch/~asl-datasets/ijrr_euroc_mav_dataset/machine_hall/MH_01_easy/MH_01_easy.zip
 mkdir MH01
 unzip MH_01_easy.zip -d MH01/
-MH_01_easy.zip
+rm MH_01_easy.zip
 ```
 
 ### 7. Run some examples

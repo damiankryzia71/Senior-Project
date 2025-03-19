@@ -6,7 +6,6 @@ sudo apt install git
 ```
 
 ### 1. Install PX4
-Clone the repository and install dependencies.
 ```bash
 cd ~/Desktop
 git clone https://github.com/PX4/PX4-Autopilot.git --recursive
@@ -18,7 +17,6 @@ sudo reboot
 ```
 
 ### 2. Install QGroundControl
-Install dependencies.
 ```bash
 sudo usermod -a -G dialout $USER
 sudo apt-get remove modemmanager -y

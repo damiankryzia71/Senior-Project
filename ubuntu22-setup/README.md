@@ -38,6 +38,7 @@ sudo reboot
 ```
 Run QGroundControl.
 ```bash
+cd ~/Desktop
 chmod +x QGroundControl-x86_64.AppImage
 ./QGroundControl-x86_64.AppImage
 ```
@@ -46,6 +47,34 @@ chmod +x QGroundControl-x86_64.AppImage
 First, run QGroundControl as described in the previous step.
 Then, run this command.
 ```bash
+cd ~/Desktop/PX4-Autopilot
 make px4_sitl gz_x500
 ```
 Gazebo should open and QGroundControl should connect. The UAV is now ready to fly.
+
+Reboot the system.
+```bash
+sudo reboot
+```
+
+### 4. Install Pangolin with all of its dependencies
+```bash
+cd ~/Desktop
+git clone --recursive https://github.com/stevenlovegrove/Pangolin.git
+cd Pangolin
+git checkout v0.9.3
+git switch -c v0.9.3
+./scripts/install_prerequisites.sh -m apt all
+mkdir build
+cd build
+cmake .. -D CMAKE_BUILD_TYPE=Release
+sudo make -j$(nproc)
+sudo make install
+```
+
+Reboot the system.
+```bash
+sudo reboot
+```
+
+### 5. Install ORB-SLAM3

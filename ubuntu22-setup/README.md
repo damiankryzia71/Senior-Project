@@ -63,9 +63,8 @@ cd Pangolin
 git checkout v0.9.3
 git switch -c v0.9.3
 ./scripts/install_prerequisites.sh -m apt all
-mkdir build
+cmake -B build
 cd build
-cmake .. -D CMAKE_BUILD_TYPE=Release
 sudo make -j$(nproc)
 sudo make install
 ```

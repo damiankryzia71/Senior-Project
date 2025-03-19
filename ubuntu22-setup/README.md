@@ -78,3 +78,46 @@ sudo reboot
 ```
 
 ### 5. Install ORB-SLAM3
+```bash
+cd ~/Desktop
+git clone https://github.com/UZ-SLAMLab/ORB_SLAM3.git
+cd ORB_SLAM3
+git checkout c++14_comp
+chmod +x build.sh
+./build.sh
+```
+
+Reboot the system.
+```bash
+sudo reboot
+```
+
+### 6. Download test datasets
+```bash
+cd ~/Desktop/ORB_SLAM3
+mkdir -p Datasets/EuRoc
+cd Datasets/EuRoc
+wget -c http://robotics.ethz.ch/~asl-datasets/ijrr_euroc_mav_dataset/machine_hall/MH_01_easy/MH_01_easy.zip
+mkdir MH01
+unzip MH_01_easy.zip -d MH01/
+MH_01_easy.zip
+```
+
+### 7. Run some examples
+```bash
+cd ~/Desktop/ORB_SLAM3
+
+# Pick of them below that you want to run
+
+# Mono
+./Examples/Monocular/mono_euroc ./Vocabulary/ORBvoc.txt ./Examples/Monocular/EuRoC.yaml ./Datasets/EuRoc/MH01 ./Examples/Monocular/EuRoC_TimeStamps/MH01.txt dataset-MH01_mono
+
+# Mono + Inertial
+./Examples/Monocular-Inertial/mono_inertial_euroc ./Vocabulary/ORBvoc.txt ./Examples/Monocular-Inertial/EuRoC.yaml ./Datasets/EuRoc/MH01 ./Examples/Monocular-Inertial/EuRoC_TimeStamps/MH01.txt dataset-MH01_monoi
+
+# Stereo
+./Examples/Stereo/stereo_euroc ./Vocabulary/ORBvoc.txt ./Examples/Stereo/EuRoC.yaml ./Datasets/EuRoc/MH01 ./Examples/Stereo/EuRoC_TimeStamps/MH01.txt dataset-MH01_stereo
+
+# Stereo + Inertial
+./Examples/Stereo-Inertial/stereo_inertial_euroc ./Vocabulary/ORBvoc.txt ./Examples/Stereo-Inertial/EuRoC.yaml ./Datasets/EuRoc/MH01 ./Examples/Stereo-Inertial/EuRoC_TimeStamps/MH01.txt dataset-MH01_stereoi
+```

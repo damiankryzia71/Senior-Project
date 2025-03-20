@@ -24,11 +24,11 @@ sudo apt install gstreamer1.0-plugins-bad gstreamer1.0-libav gstreamer1.0-gl -y
 sudo apt install libfuse2 -y
 sudo apt install libxcb-xinerama0 libxkbcommon-x11-0 libxcb-cursor-dev -y
 ```
-Download QGroundControl Daily Build [here](https://d176tv9ibo4jno.cloudfront.net/builds/master/QGroundControl-x86_64.AppImage).
+Download QGroundControl [here](https://d176tv9ibo4jno.cloudfront.net/latest/QGroundControl.AppImage).
 Optionally:
 ```bash
 cd ~/Desktop
-mv ~/Downloads/QGroundControl-x86_64.AppImage .
+mv ~/Downloads/QGroundControl.AppImage .
 ```
 Reboot the system.
 ```bash
@@ -37,8 +37,8 @@ sudo reboot
 Run QGroundControl.
 ```bash
 cd ~/Desktop
-chmod +x QGroundControl-x86_64.AppImage
-./QGroundControl-x86_64.AppImage
+chmod +x QGroundControl.AppImage
+./QGroundControl.AppImage
 ```
 
 ### 3. Build PX4 with Gazebo simulation.

@@ -2,7 +2,7 @@
 
 
 ## Prerequisites
-Follow the instructions [here](https://github.com/damiankryzia71/orbslam3-px4-qgc-ubuntu/tree/ubuntu20) to install PX4, QGroundControl, and ORB-SLAM3.
+Follow the instructions [here](https://github.com/damiankryzia71/Senior-Project/tree/main/orbslam3-px4-qgc-setup) to install PX4, QGroundControl, and ORB-SLAM3.
 
 ## 1. Run the Gazebo simulation
 Build PX4 and run a Gazebo-simulated drone.

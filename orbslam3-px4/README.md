@@ -138,4 +138,4 @@ You might need to move the simulated drone, for example, by running the takeoff 
 
 You should see ORB-SLAM3 running within the simulated environment in the ORB-SLAM3 viewer.
 
-![ORB-SLAM3 Viewer Mono](https://github.com/damiankryzia71/orbslam3-px4/blob/84be09b04d1060f6f3205aa5445ded3575744c3b/screenshots/Screenshot%202025-04-04%20170550.png)
+![ORB-SLAM3 Viewer Mono](https://github.com/damiankryzia71/Senior-Project/blob/2903567ff8f3655bf74684da16c5f6eac06fe27b/screenshots/Screenshot%202025-04-04%20170550.png)

@@ -2,7 +2,7 @@
 
 
 ## Prerequisites
-Follow the instructions in [this repository](https://github.com/damiankryzia71/orbslam3-px4-qgc-ubuntu/tree/ubuntu20) to install PX4, QGroundControl, and ORB-SLAM3.
+Follow the instructions [here](https://github.com/damiankryzia71/orbslam3-px4-qgc-ubuntu/tree/ubuntu20) to install PX4, QGroundControl, and ORB-SLAM3.
 
 ## 1. Run the Gazebo simulation
 Build PX4 and run a Gazebo-simulated drone.
@@ -31,7 +31,7 @@ Run the QGroundControl app image.
 Inside QGroundControl, navigate to Application Settings -> General -> Video Settings and enable streaming from UDP h.264 Video Stream.
 Leave the other options as default.
 
-![QGC Settings](https://github.com/damiankryzia71/orbslam3-gz-ubuntu22/blob/1434da47aa1d87834c4a4d755039aa4110919705/screenshots/Screenshot%20from%202025-04-01%2018-06-33.png)
+![QGC Settings](https://github.com/damiankryzia71/Senior-Project/blob/1ed7adff260b4aad2c58c51544a91dab3e8e70bd/screenshots/Screenshot%20from%202025-04-01%2018-06-33.png)
 
 Now you should see the video feed from your Gazebo simulation inside QGroundControl.
 

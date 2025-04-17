@@ -8,6 +8,9 @@
 #include <gazebo/msgs/msgs.hh>
 #include <gazebo/transport/transport.hh>
 
+#include <gst/gst.h>
+#include <gst/app/gstappsrc.h>
+
 #include <iostream>
 #include <string>
 #include <vector>

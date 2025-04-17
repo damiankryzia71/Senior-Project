@@ -47,10 +47,10 @@ namespace gazebo
                 // initialize transport node
                 this->node = transport::NodePtr(new transport::Node());
                 this->node->Init();
-                this->sub = this->node->Subscribe(topicName, &LidarGstPlugin::Callback, this);
+                this->sub = this->node->Subscribe(topicName, &LidarGstPlugin::msgCallback, this);
             }
 
-            void Callback(ConstLaserScanStampedPtr &msg)
+            void msgCallback(ConstLaserScanStampedPtr &msg)
             {
                 static bool executed = false;
                 const gazebo::msgs::LaserScan &scan = msg->scan();

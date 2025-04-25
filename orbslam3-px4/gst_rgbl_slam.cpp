@@ -13,9 +13,6 @@
 #include <string>
 #include <atomic>
 
-const std::string PATH_TO_VOCABULARY = "/home/damian/Desktop/ORB_SLAM3_RGBL/Vocabulary/ORBvoc.txt";
-const std::string PATH_TO_SETTINGS = "/home/damian/Desktop/ORB_SLAM3_RGBL/Examples/RGB-L/KITTI00-02.yaml";
-
 bool LoadPointCloudGst(cv::Mat &pcd, GstElement *appsink);
 void DisplayPointCloud(const cv::Mat &pcd);
 
@@ -34,6 +31,14 @@ void listenForStopCommand() {
 
 int main(int argc, char** argv) {
     gst_init(&argc, &argv);
+
+    if (argc < 3) {
+        std::cerr << "Usage: " << argv[0] << " path_to_vocabulary path_to_settings" << std::endl;
+        return 1;
+    }
+
+    std::string path_to_vocabulary = argv[1];
+    std::string path_to_settings = argv[2];
 
     std::string camera_pipeline_desc = 
     "udpsrc port=5601 ! "
@@ -70,7 +75,7 @@ int main(int argc, char** argv) {
 
     std::thread stopListener(listenForStopCommand);
 
-    ORB_SLAM3::System SLAM(PATH_TO_VOCABULARY, PATH_TO_SETTINGS, ORB_SLAM3::System::RGBL, true);
+    ORB_SLAM3::System SLAM(path_to_vocabulary, path_to_settings, ORB_SLAM3::System::RGBL, true);
 
     cv::Mat img, pcd;
     bool successPcd;

@@ -4,14 +4,20 @@
 
 #include <gst/gst.h>
 
+#include "System.h"
+
 #include <iostream>
+#include <vector>
+#include <array>
 #include <thread>
 #include <string>
-#include <vector>
 #include <atomic>
 
-bool LoadPointcloudBinaryMatFromGst(cv::Mat &point_cloud, GstElement *appsink);
-void DisplayPointCloud(const cv::Mat& point_cloud);
+const std::string PATH_TO_VOCABULARY = "/home/damian/Desktop/ORB_SLAM3_RGBL/Vocabulary/ORBvoc.txt";
+const std::string PATH_TO_SETTINGS = "/home/damian/Desktop/ORB_SLAM3_RGBL/Examples/RGB-L/KITTI00-02.yaml";
+
+bool LoadPointCloudGst(cv::Mat &pcd, GstElement *appsink);
+void DisplayPointCloud(const cv::Mat &pcd);
 
 std::atomic<bool> stopSLAM(false);
 
@@ -26,122 +32,131 @@ void listenForStopCommand() {
     }
 }
 
-int main(int argc, char** argv)
-{
-  if (argc < 2)
+int main(int argc, char** argv) {
+    gst_init(&argc, &argv);
+
+    std::string camera_pipeline_desc = 
+    "udpsrc port=5601 ! "
+    "application/x-rtp,media=video,encoding-name=H264,payload=96 ! "
+    "rtph264depay ! avdec_h264 ! videoconvert ! "
+    "appsink";
+
+    std::string lidar_pipeline_desc = 
+    "udpsrc port=5602 "
+    "caps=\"application/octet-stream\" !" 
+    "appsink name=mysink";
+
+    cv::VideoCapture cap(camera_pipeline_desc, cv::CAP_GSTREAMER);
+
+    if (!cap.isOpened())
     {
-        std::cout << "USAGE: px4_stream UDP_PORT" << std::endl;
+        std::cerr << "Failed to open video stream" << std::endl;
         return 1;
     }
 
-    // Get udp port
-    const std::string udpPort = argv[1];
-
-    // Initialize GStreamer pipeline
-    GstElement *pipeline = nullptr;
-    GstElement *appsink = nullptr;
-
-    gst_init(nullptr, nullptr);
-
-    std::string pipelineString = "udpsrc port=" + udpPort + " caps=\"application/octet-stream\" ! appsink name=sink";
-
-    GError* error = nullptr;
-    pipeline = gst_parse_launch(pipelineString.c_str(), &error);
+    GError *error = nullptr;
+    GstElement *pipeline = gst_parse_launch(lidar_pipeline_desc.c_str(), &error);
 
     if (!pipeline)
     {
-        std::cerr << "Failed to create GStreamer pipeline: " << error->message << std::endl;
+        std::cerr << "Failed to create pipeline: " << error->message << std::endl;
         g_error_free(error);
         return 1;
     }
 
-    appsink = gst_bin_get_by_name(GST_BIN(pipeline), "sink");
+    GstElement *appsink = gst_bin_get_by_name(GST_BIN(pipeline), "mysink");
+
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 
     std::thread stopListener(listenForStopCommand);
 
-    bool success;
-    cv::Mat point_cloud;
+    ORB_SLAM3::System SLAM(PATH_TO_VOCABULARY, PATH_TO_SETTINGS, ORB_SLAM3::System::RGBL, true);
+
+    cv::Mat img, pcd;
+    bool successPcd;
     while (!stopSLAM)
     {
-        success = LoadPointcloudBinaryMatFromGst(point_cloud, appsink);
+        successPcd = LoadPointCloudGst(pcd, appsink);
 
-        if (!success)
+        if (!(successPcd && cap.read(img)))
         {
-            std::cout << "Skipping frame, could not load point_cloud\n";
+            std::cout << "Could not load frame, skipping\n";
             continue;
         }
 
-        std::cout << "Processing frame\n";
-        DisplayPointCloud(point_cloud);
+        double timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(
+            std::chrono::steady_clock::now().time_since_epoch())
+            .count();
+        
+        SLAM.TrackRGBL(img, pcd, timestamp);
+
+        DisplayPointCloud(pcd);
     }
 
-    std::cout << "Done processing" << std::endl;
+    SLAM.Shutdown();
+
+    cap.release();
+    gst_element_set_state(pipeline, GST_STATE_NULL);
+    gst_object_unref(appsink);
+    gst_object_unref(pipeline);
 
     stopListener.join();
 
     return 0;
 }
 
-bool LoadPointcloudBinaryMatFromGst(cv::Mat &point_cloud, GstElement *appsink)
+bool LoadPointCloudGst(cv::Mat &pcd, GstElement *appsink)
 {
     GstSample *sample = nullptr;
     g_signal_emit_by_name(appsink, "pull-sample", &sample);
-
     if (!sample)
     {
-        std::cerr << "No data received from GStreamer stream." << std::endl;
+        std::cerr << "Failed to pull sample." << std::endl;
         return false;
     }
 
     GstBuffer *buffer = gst_sample_get_buffer(sample);
     GstMapInfo map;
 
-    if (!gst_buffer_map(buffer, &map, GST_MAP_READ))
+    if (gst_buffer_map(buffer, &map, GST_MAP_READ))
     {
-        std::cerr << "Failed to map GStreamer buffer." << std::endl;
-        gst_sample_unref(sample);
+        size_t numPoints = map.size / (sizeof(float) * 3);
+        const float *data = reinterpret_cast<const float*>(map.data);
+
+        pcd = cv::Mat::zeros(3, numPoints, CV_32F);
+        for (size_t i = 0; i < numPoints; i++)
+        {
+            pcd.at<float>(0, i) = data[i * 3 + 0]; // x
+            pcd.at<float>(1, i) = data[i * 3 + 1]; // y
+            pcd.at<float>(2, i) = data[i * 3 + 2]; // z
+        }
+
+        gst_buffer_unmap(buffer, &map);
+    }
+    else
+    {
+        std::cerr << "Failed to map buffer." << std::endl;
         return false;
     }
 
-    const float *data = reinterpret_cast<const float *>(map.data);
-    const size_t numFloats = map.size / sizeof(float);
-    const size_t numPoints = numFloats / 4;
-
-    point_cloud = cv::Mat::zeros(cv::Size(numPoints, 4), CV_32F);
-
-    for (size_t i = 0; i < numPoints; ++i)
-    {
-        point_cloud.at<float>(0, i) = data[i * 4 + 0]; // x
-        point_cloud.at<float>(1, i) = data[i * 4 + 1]; // y
-        point_cloud.at<float>(2, i) = data[i * 4 + 2]; // Z
-        point_cloud.at<float>(3, i) = 1.0f;
-    }
-
-    gst_buffer_unmap(buffer, &map);
     gst_sample_unref(sample);
-
     return true;
 }
 
-void DisplayPointCloud(const cv::Mat& point_cloud) {
-    // Create a blank image
+void DisplayPointCloud(const cv::Mat &pcd) {
     int image_size = 800;
     cv::Mat display = cv::Mat::zeros(image_size, image_size, CV_8UC3);
 
-    // Scale and center the points for visualization
-    float scale = 50.0f; // You may need to adjust this
+    float scale = 50.0f;
     cv::Point2f center(image_size / 2.0f, image_size / 2.0f);
 
-    for (int i = 0; i < point_cloud.cols; i++) {
-        float x = point_cloud.at<float>(0, i);
-        float y = point_cloud.at<float>(1, i);
+    for (int i = 0; i < pcd.cols; i++) {
+        float x = pcd.at<float>(0, i);
+        float y = pcd.at<float>(1, i);
 
-        // Project to 2D (x, y), scaling
         int u = static_cast<int>(x * scale + center.x);
         int v = static_cast<int>(y * scale + center.y);
 
-        // Draw only if inside image bounds
         if (u >= 0 && u < image_size && v >= 0 && v < image_size) {
             cv::circle(display, cv::Point(u, v), 1, cv::Scalar(0, 255, 0), -1);
         }

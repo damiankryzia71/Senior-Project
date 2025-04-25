@@ -10,6 +10,7 @@
 void LoadFiles(const std::string &pathToSequence, std::vector<std::string> &filenames, std::vector<double> &timestamps);
 bool LoadPointcloudBinaryMat(const std::string& FilePath, cv::Mat& point_cloud);
 void VisualizePointCloud2D(const cv::Mat &point_cloud);
+void DisplayPointCloud(const cv::Mat &point_cloud);
 
 int main(int argc, char** argv)
 {
@@ -39,7 +40,7 @@ int main(int argc, char** argv)
         }
 
         std::cout << "Processing frame at: " << filenames[i] << std::endl;
-        VisualizePointCloud2D(pcd);
+        DisplayPointCloud(pcd);
     }
 
     std::cout << "Done processing" << std::endl;
@@ -80,25 +81,20 @@ void LoadFiles(const std::string &pathToSequence, std::vector<std::string> &file
 }
 
 bool LoadPointcloudBinaryMat(const std::string& FilePath, cv::Mat& point_cloud){
-    // Initialization
-    int32_t num = 1000000; // maximum Number of points to allocate
+    int32_t num = 1000000;
     float* data = (float*) malloc(num * sizeof(float));
     float* px = data + 0;
     float* py = data + 1;
     float* pz = data + 2;
     float* pr = data + 3;
 
-    // load point cloud from file
     std::FILE* stream;
     stream = fopen(FilePath.c_str(), "rb");
 
-    // Save data to variable
     num = fread(data, sizeof(float), num, stream)/4;
 
-    // Clear Pointcloud variable
     point_cloud = cv::Mat::zeros(cv::Size(num, 4), CV_32F);
 
-    // Format data as desired
     for (int32_t i = 0; i < num; i++) {
         point_cloud.at<float>(0, i) = (float)*px;
         point_cloud.at<float>(1, i) = (float)*py;
@@ -107,16 +103,14 @@ bool LoadPointcloudBinaryMat(const std::string& FilePath, cv::Mat& point_cloud){
         px+=4; py+=4; pz+=4; pr+=4;
     }
     
-    // Close Stream and Free Memory
     fclose(stream);
     free(data);
 
-    // Feedback and return
     return true;
 }
 
 void VisualizePointCloud2D(const cv::Mat &point_cloud) {
-    int width = 800;
+    int width = 1600;
     int height = 800;
     float scale = 10.0f;
 
@@ -124,7 +118,7 @@ void VisualizePointCloud2D(const cv::Mat &point_cloud) {
 
     for (int i = 0; i < point_cloud.cols; ++i) {
         float x = point_cloud.at<float>(0, i);
-        float z = point_cloud.at<float>(2, i); // Top-down view: X-Z plane
+        float z = point_cloud.at<float>(2, i);
 
         int u = static_cast<int>(x * scale + width / 2);
         int v = static_cast<int>(z * scale + height / 2);
@@ -135,5 +129,32 @@ void VisualizePointCloud2D(const cv::Mat &point_cloud) {
     }
 
     cv::imshow("Point Cloud Viewer", display);
-    cv::waitKey(30); // wait 30 ms between frames
+    cv::waitKey(30);
+}
+
+void DisplayPointCloud(const cv::Mat& point_cloud) {
+    // Create a blank image
+    int image_size = 800;
+    cv::Mat display = cv::Mat::zeros(image_size, image_size, CV_8UC3);
+
+    // Scale and center the points for visualization
+    float scale = 50.0f; // You may need to adjust this
+    cv::Point2f center(image_size / 2.0f, image_size / 2.0f);
+
+    for (int i = 0; i < point_cloud.cols; i++) {
+        float x = point_cloud.at<float>(0, i);
+        float y = point_cloud.at<float>(1, i);
+
+        // Project to 2D (x, y), scaling
+        int u = static_cast<int>(x * scale + center.x);
+        int v = static_cast<int>(y * scale + center.y);
+
+        // Draw only if inside image bounds
+        if (u >= 0 && u < image_size && v >= 0 && v < image_size) {
+            cv::circle(display, cv::Point(u, v), 1, cv::Scalar(0, 255, 0), -1);
+        }
+    }
+
+    cv::imshow("Point Cloud", display);
+    cv::waitKey(30);
 }

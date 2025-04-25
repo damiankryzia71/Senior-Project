@@ -1,15 +1,17 @@
 #include <opencv2/core/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
 #include <gst/gst.h>
 
-#include "System.h"
-
+#include <iostream>
 #include <thread>
 #include <string>
 #include <vector>
 #include <atomic>
 
 bool LoadPointcloudBinaryMatFromGst(cv::Mat &point_cloud, GstElement *appsink);
-void VisualizePointCloud2D(const cv::Mat &point_cloud);
+void DisplayPointCloud(const cv::Mat& point_cloud);
 
 std::atomic<bool> stopSLAM(false);
 
@@ -43,7 +45,7 @@ int main(int argc, char** argv)
 
     std::string pipelineString = "udpsrc port=" + udpPort + " caps=\"application/octet-stream\" ! appsink name=sink";
 
-    GError* error;
+    GError* error = nullptr;
     pipeline = gst_parse_launch(pipelineString.c_str(), &error);
 
     if (!pipeline)
@@ -71,7 +73,7 @@ int main(int argc, char** argv)
         }
 
         std::cout << "Processing frame\n";
-        VisualizePointCloud2D(point_cloud);
+        DisplayPointCloud(point_cloud);
     }
 
     std::cout << "Done processing" << std::endl;
@@ -122,25 +124,29 @@ bool LoadPointcloudBinaryMatFromGst(cv::Mat &point_cloud, GstElement *appsink)
     return true;
 }
 
-void VisualizePointCloud2D(const cv::Mat &point_cloud) {
-    int width = 800;
-    int height = 800;
-    float scale = 10.0f;
+void DisplayPointCloud(const cv::Mat& point_cloud) {
+    // Create a blank image
+    int image_size = 800;
+    cv::Mat display = cv::Mat::zeros(image_size, image_size, CV_8UC3);
 
-    cv::Mat display = cv::Mat::zeros(height, width, CV_8UC3);
+    // Scale and center the points for visualization
+    float scale = 50.0f; // You may need to adjust this
+    cv::Point2f center(image_size / 2.0f, image_size / 2.0f);
 
-    for (int i = 0; i < point_cloud.cols; ++i) {
+    for (int i = 0; i < point_cloud.cols; i++) {
         float x = point_cloud.at<float>(0, i);
-        float z = point_cloud.at<float>(2, i); // Top-down view: X-Z plane
+        float y = point_cloud.at<float>(1, i);
 
-        int u = static_cast<int>(x * scale + width / 2);
-        int v = static_cast<int>(z * scale + height / 2);
+        // Project to 2D (x, y), scaling
+        int u = static_cast<int>(x * scale + center.x);
+        int v = static_cast<int>(y * scale + center.y);
 
-        if (u >= 0 && u < width && v >= 0 && v < height) {
+        // Draw only if inside image bounds
+        if (u >= 0 && u < image_size && v >= 0 && v < image_size) {
             cv::circle(display, cv::Point(u, v), 1, cv::Scalar(0, 255, 0), -1);
         }
     }
 
-    cv::imshow("Point Cloud Viewer", display);
-    cv::waitKey(30); // wait 30 ms between frames
+    cv::imshow("Point Cloud", display);
+    cv::waitKey(30);
 }

@@ -32,22 +32,24 @@ void listenForStopCommand() {
 int main(int argc, char** argv) {
     gst_init(&argc, &argv);
 
-    if (argc < 3) {
-        std::cerr << "Usage: " << argv[0] << " path_to_vocabulary path_to_settings" << std::endl;
+    if (argc < 5) {
+        std::cerr << "Usage: " << argv[0] << " path_to_vocabulary path_to_settings camera_port lidar_port" << std::endl;
         return 1;
     }
 
     std::string path_to_vocabulary = argv[1];
     std::string path_to_settings = argv[2];
+    std::string camera_port = argv[3];
+    std::string lidar_port = argv[4];
 
     std::string camera_pipeline_desc = 
-    "udpsrc port=5601 ! "
+    "udpsrc port=" + camera_port + " ! "
     "application/x-rtp,media=video,encoding-name=H264,payload=96 ! "
     "rtph264depay ! avdec_h264 ! videoconvert ! "
     "appsink";
 
     std::string lidar_pipeline_desc = 
-    "udpsrc port=5602 "
+    "udpsrc port=" + lidar_port + " "
     "caps=\"application/octet-stream\" !" 
     "appsink name=mysink";
 

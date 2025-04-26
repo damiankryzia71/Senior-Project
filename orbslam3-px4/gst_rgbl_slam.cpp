@@ -124,12 +124,13 @@ bool LoadPointCloudGst(cv::Mat &pcd, GstElement *appsink)
         size_t numPoints = map.size / (sizeof(float) * 3);
         const float *data = reinterpret_cast<const float*>(map.data);
 
-        pcd = cv::Mat::zeros(3, numPoints, CV_32F);
+        pcd = cv::Mat::zeros(4, numPoints, CV_32F);
         for (size_t i = 0; i < numPoints; i++)
         {
             pcd.at<float>(0, i) = data[i * 3 + 0]; // x
             pcd.at<float>(1, i) = data[i * 3 + 1]; // y
             pcd.at<float>(2, i) = data[i * 3 + 2]; // z
+            pcd.at<float>(3, i) = 1.0f;
         }
 
         gst_buffer_unmap(buffer, &map);

@@ -1,7 +1,4 @@
 #include <opencv2/core/core.hpp>
-#include <opencv2/highgui.hpp>
-#include <opencv2/imgproc.hpp>
-
 #include <gst/gst.h>
 
 #include "System.h"
@@ -14,7 +11,6 @@
 #include <atomic>
 
 bool LoadPointCloudGst(cv::Mat &pcd, GstElement *appsink);
-void DisplayPointCloud(const cv::Mat &pcd);
 
 std::atomic<bool> stopSLAM(false);
 
@@ -96,8 +92,6 @@ int main(int argc, char** argv) {
             .count();
         
         SLAM.TrackRGBL(img, pcd, timestamp);
-
-        DisplayPointCloud(pcd);
     }
 
     SLAM.Shutdown();
@@ -148,27 +142,4 @@ bool LoadPointCloudGst(cv::Mat &pcd, GstElement *appsink)
 
     gst_sample_unref(sample);
     return true;
-}
-
-void DisplayPointCloud(const cv::Mat &pcd) {
-    int image_size = 800;
-    cv::Mat display = cv::Mat::zeros(image_size, image_size, CV_8UC3);
-
-    float scale = 50.0f;
-    cv::Point2f center(image_size / 2.0f, image_size / 2.0f);
-
-    for (int i = 0; i < pcd.cols; i++) {
-        float x = pcd.at<float>(0, i);
-        float y = pcd.at<float>(1, i);
-
-        int u = static_cast<int>(x * scale + center.x);
-        int v = static_cast<int>(y * scale + center.y);
-
-        if (u >= 0 && u < image_size && v >= 0 && v < image_size) {
-            cv::circle(display, cv::Point(u, v), 1, cv::Scalar(0, 255, 0), -1);
-        }
-    }
-
-    cv::imshow("Point Cloud", display);
-    cv::waitKey(30);
 }

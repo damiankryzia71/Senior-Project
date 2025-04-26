@@ -306,5 +306,4 @@ target_link_libraries(rgbl_kitti ${PROJECT_NAME})
 
 add_executable(gst_rgbl_slam
 Examples/RGB-L/gst_rgbl_slam.cpp)
-
 target_link_libraries(gst_rgbl_slam ${PROJECT_NAME})

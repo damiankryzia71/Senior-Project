@@ -1,10 +1,10 @@
 #include <opencv2/core/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 
-#include "System.h"
-
-#include <thread>
+#include <iostream>
+#include <iomanip>
 #include <string>
-#include <atomic>
 #include <fstream>
 
 void LoadFiles(const std::string &pathToSequence, std::vector<std::string> &filenames, std::vector<double> &timestamps);
@@ -50,7 +50,6 @@ int main(int argc, char** argv)
 
 void LoadFiles(const std::string &pathToSequence, std::vector<std::string> &filenames, std::vector<double> &timestamps)
 {
-    // Load timestamps
     std::ifstream fTimes;
     std::string pathTimestapms = pathToSequence + "color/sequences/00/times.txt";
     fTimes.open(pathTimestapms);
@@ -68,14 +67,13 @@ void LoadFiles(const std::string &pathToSequence, std::vector<std::string> &file
         }
     }
 
-    // Load pointcloud files
     std::string pathPcd = pathToSequence + "velodyne/sequences/00/velodyne/";
     const int n = timestamps.size();
     filenames.resize(n);
     for (int i = 0; i < n; i++)
     {
         std::stringstream ss;
-        ss << setfill('0') << setw(6) << i;
+        ss << std::setfill('0') << std::setw(6) << i;
         filenames[i] = pathPcd + ss.str() + ".bin";
     }
 }
@@ -109,47 +107,20 @@ bool LoadPointcloudBinaryMat(const std::string& FilePath, cv::Mat& point_cloud){
     return true;
 }
 
-void VisualizePointCloud2D(const cv::Mat &point_cloud) {
-    int width = 1600;
-    int height = 800;
-    float scale = 10.0f;
-
-    cv::Mat display = cv::Mat::zeros(height, width, CV_8UC3);
-
-    for (int i = 0; i < point_cloud.cols; ++i) {
-        float x = point_cloud.at<float>(0, i);
-        float z = point_cloud.at<float>(2, i);
-
-        int u = static_cast<int>(x * scale + width / 2);
-        int v = static_cast<int>(z * scale + height / 2);
-
-        if (u >= 0 && u < width && v >= 0 && v < height) {
-            cv::circle(display, cv::Point(u, v), 1, cv::Scalar(0, 255, 0), -1);
-        }
-    }
-
-    cv::imshow("Point Cloud Viewer", display);
-    cv::waitKey(30);
-}
-
 void DisplayPointCloud(const cv::Mat& point_cloud) {
-    // Create a blank image
     int image_size = 800;
     cv::Mat display = cv::Mat::zeros(image_size, image_size, CV_8UC3);
 
-    // Scale and center the points for visualization
-    float scale = 50.0f; // You may need to adjust this
+    float scale = 50.0f;
     cv::Point2f center(image_size / 2.0f, image_size / 2.0f);
 
     for (int i = 0; i < point_cloud.cols; i++) {
         float x = point_cloud.at<float>(0, i);
         float y = point_cloud.at<float>(1, i);
 
-        // Project to 2D (x, y), scaling
         int u = static_cast<int>(x * scale + center.x);
         int v = static_cast<int>(y * scale + center.y);
 
-        // Draw only if inside image bounds
         if (u >= 0 && u < image_size && v >= 0 && v < image_size) {
             cv::circle(display, cv::Point(u, v), 1, cv::Scalar(0, 255, 0), -1);
         }

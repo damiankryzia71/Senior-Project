@@ -60,7 +60,7 @@ namespace gazebo
                 }
 
                 // configure appsrc
-                GstCaps *caps = gst_caps_new_simple("application/octet-stream", nullptr);
+                GstCaps *caps = gst_caps_new_simple("application/octet-stream", "media", G_TYPE_STRING, "application", nullptr);
                 g_object_set(this->appsrc, "caps", caps, "format", GST_FORMAT_TIME, "is-live", TRUE, nullptr);
 
                 gst_bin_add_many(GST_BIN(this->pipeline), this->appsrc, this->tee, nullptr);

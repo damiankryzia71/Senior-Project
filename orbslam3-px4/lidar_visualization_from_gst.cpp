@@ -23,8 +23,7 @@ int main(int argc, char** argv) {
     std::string lidar_port = argv[1];
 
     std::string lidar_pipeline_desc = 
-    "udpsrc port=" + lidar_port + " "
-    "caps=\"application/octet-stream\" !" 
+    "udpsrc port=" + lidar_port + " ! " 
     "appsink name=mysink";
 
     GError *error = nullptr;

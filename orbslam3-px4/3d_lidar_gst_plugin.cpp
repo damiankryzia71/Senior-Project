@@ -109,8 +109,15 @@ namespace gazebo
             void msgCallback(ConstLaserScanStampedPtr &msg)
             {
                 const gazebo::msgs::LaserScan &scan = msg->scan();
+
                 const int count_h = scan.count();          // horizontal samples
                 const int count_v = scan.vertical_count(); // vertical samples
+
+                // Check if we can set these values to static
+                const float angle_min_h = scan.angle_min();
+                const float angle_step_h = scan.angle_step();
+                const float angle_min_v = scan.vertical_angle_min();
+                const float angle_step_v = scan.vertical_angle_step();
             
                 if (count_h == 0 || count_v == 0)
                 {
@@ -118,10 +125,10 @@ namespace gazebo
                     return;
                 }
             
-                const int n = count_h * count_v; // total number of points
+                const int n = count_h * count_v; // total number of scans
             
-                // Allocate buffer for (x, y, z) per point
-                GstBuffer *buffer = gst_buffer_new_allocate(nullptr, n * 3 * sizeof(float), nullptr);
+                // Allocate buffer for number of scans (n) + count_v, count_h, angle_min_h, angle_step_h, angle_min_v, angle_step_v
+                GstBuffer *buffer = gst_buffer_new_allocate(nullptr, (n + 6) * sizeof(float), nullptr);
                 if (!buffer)
                 {
                     std::cerr << "Failed to allocate GStreamer buffer." << std::endl;
@@ -135,39 +142,21 @@ namespace gazebo
                     gst_buffer_unref(buffer);
                     return;
                 }
-            
-                const float angle_min_h = scan.angle_min();
-                const float angle_step_h = scan.angle_step();
-                const float angle_min_v = scan.vertical_angle_min();
-                const float angle_step_v = scan.vertical_angle_step();
-            
-                for (int v = 0; v < count_v; ++v)
-                {
-                    float vertical_angle = angle_min_v + v * angle_step_v;
-                    for (int h = 0; h < count_h; ++h)
-                    {
-                        int idx = v * count_h + h;
-                        float r = scan.ranges(idx);
-            
-                        if (r < scan.range_min() || r > scan.range_max())
-                        {
-                            ((float*)map.data)[idx * 3 + 0] = std::numeric_limits<float>::quiet_NaN();
-                            ((float*)map.data)[idx * 3 + 1] = std::numeric_limits<float>::quiet_NaN();
-                            ((float*)map.data)[idx * 3 + 2] = std::numeric_limits<float>::quiet_NaN();
-                            continue;
-                        }
-            
-                        float horizontal_angle = angle_min_h + h * angle_step_h;
-            
-                        // 3D point calculation
-                        float x = r * cosf(vertical_angle) * cosf(horizontal_angle);
-                        float y = r * cosf(vertical_angle) * sinf(horizontal_angle);
-                        float z = r * sinf(vertical_angle);
-            
-                        ((float*)map.data)[idx * 3 + 0] = x;
-                        ((float*)map.data)[idx * 3 + 1] = y;
-                        ((float*)map.data)[idx * 3 + 2] = z;
-                    }
+                
+                // New buffer fill logic - send array of floats in the format [count_h, count_v, angle_min_h, angle_step_h, angle_min_v, angle_step_v, ...ranges]
+                float *data = reinterpret_cast<float*>(map.data);
+
+                data[0] = count_h;
+                data[1] = count_v;
+                data[2] = angle_min_h;
+                data[3] = angle_step_h;
+                data[4] = angle_min_v;
+                data[5] = angle_step_v;
+
+                for (int i = 0; i < n; i++)
+                {   
+                    float r = scan.ranges(i);
+                    data[i + 6] = (r < scan.range_min() || r > scan.range_max()) ? std::numeric_limits<float>::quiet_NaN() : r;
                 }
             
                 gst_buffer_unmap(buffer, &map);

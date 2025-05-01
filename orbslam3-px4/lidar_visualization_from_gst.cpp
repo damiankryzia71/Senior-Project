@@ -78,15 +78,43 @@ bool LoadPointCloudGst(cv::Mat &pcd, GstElement *appsink)
 
     if (gst_buffer_map(buffer, &map, GST_MAP_READ))
     {
-        size_t numPoints = map.size / (sizeof(float) * 3);
         const float *data = reinterpret_cast<const float*>(map.data);
 
-        pcd = cv::Mat::zeros(3, numPoints, CV_32F);
-        for (size_t i = 0; i < numPoints; i++)
+        // Extract data from message
+        const int count_h = int(data[0]);
+        const int count_v = int(data[1]);
+        const float angle_min_h = data[2];
+        const float angle_step_h = data[3];
+        const float angle_min_v = data[4];
+        const float angle_step_v = data[5];
+        const float *ranges = data + 6;
+        
+        // Initialize pcd
+        pcd = cv::Mat::zeros(3, count_h * count_v, CV_32F);
+
+        // Calculate (x, y, z) for each point to fill pcd
+        for (int v = 0; v < count_v; v++)
         {
-            pcd.at<float>(0, i) = data[i * 3 + 0]; // x
-            pcd.at<float>(1, i) = data[i * 3 + 1]; // y
-            pcd.at<float>(2, i) = data[i * 3 + 2]; // z
+            float angle_v = angle_min_v + v * angle_step_v;
+            for (int h = 0; h < count_h; h++)
+            {
+                float angle_h = angle_min_h + h * angle_step_h;
+                int i = v * count_h + h;
+                float r = ranges[i];
+
+                // skip invalid point
+                if (std::isnan(r)) continue;
+
+                // 3D point calculation
+                float x = r * cosf(angle_v) * cosf(angle_h);
+                float y = r * cosf(angle_v) * sinf(angle_h);
+                float z = r * sinf(angle_v);
+
+                // Fill pcd
+                pcd.at<float>(0, i) = x;
+                pcd.at<float>(1, i) = y;
+                pcd.at<float>(2, i) = z;
+            }
         }
 
         gst_buffer_unmap(buffer, &map);

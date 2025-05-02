@@ -9,14 +9,10 @@
 #include <thread>
 #include <string>
 #include <atomic>
+#include <chrono>
 
 bool LoadPointCloudGst(cv::Mat &pcd, GstElement *appsink);
-void DataGrabber(cv::VideoCapture& cap, GstElement* appsink);
 
-std::mutex dataMutex;
-cv::Mat latestImg, latestPcd;
-double latestTimestamp = 0;
-std::atomic<bool> newDataAvailable(false);
 std::atomic<bool> stopSLAM(false);
 
 void listenForStopCommand() {
@@ -50,9 +46,8 @@ int main(int argc, char** argv) {
     "appsink";
 
     std::string lidar_pipeline_desc = 
-    "udpsrc port=" + lidar_port + " "
-    "caps=\"application/octet-stream\" !" 
-    "appsink name=mysink sync=false max-buffers=2 drop=true";
+    "udpsrc port=" + lidar_port + " ! "
+    "appsink name=mysink";
 
     cv::VideoCapture cap(camera_pipeline_desc, cv::CAP_GSTREAMER);
 
@@ -77,28 +72,50 @@ int main(int argc, char** argv) {
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 
     std::thread stopListener(listenForStopCommand);
-    std::thread grabberThread(DataGrabber, std::ref(cap), appsink);
     
     ORB_SLAM3::System SLAM(path_to_vocabulary, path_to_settings, ORB_SLAM3::System::RGBL, true);
     
+    cv::Mat img, pcd;
+    bool success;
+
+    // FPS monitoring
+    auto last_time = std::chrono::steady_clock::now();
+    int frame_count = 0;
+
     while (!stopSLAM) {
-        if (newDataAvailable) {
-            cv::Mat img, pcd;
-            double timestamp;
-    
-            {
-                std::lock_guard<std::mutex> lock(dataMutex);
-                img = latestImg.clone();
-                pcd = latestPcd.clone();
-                timestamp = latestTimestamp;
-                newDataAvailable = false;
-            }
-    
-            if (!img.empty() && !pcd.empty()) {
-                SLAM.TrackRGBL(img, pcd, timestamp);
-            }
-        } else {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1)); // Avoid busy-waiting
+        cap.read(img);
+        success = LoadPointCloudGst(pcd, appsink);
+
+        if (!success)
+        {
+            std::cerr << "Failed to load point cloud, skipping frame" << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            continue;
+        }
+
+        if (img.empty())
+        {
+            std::cerr << "Failed to load image, skipping frame" << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            continue;
+        }
+
+        double timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(
+            std::chrono::steady_clock::now().time_since_epoch()
+        ).count();
+
+        SLAM.TrackRGBL(img, pcd, timestamp);
+
+        // FPS monitoring
+        frame_count++;
+
+        auto now = std::chrono::steady_clock::now();
+        std::chrono::duration<double> elapsed = now - last_time;
+
+        if (elapsed.count() >= 1.0) {
+            std::cout << "Frames per second: " << frame_count << std::endl;
+            frame_count = 0;
+            last_time = now;
         }
     }
     
@@ -110,7 +127,8 @@ int main(int argc, char** argv) {
     gst_object_unref(pipeline);
     
     stopListener.join();
-    grabberThread.join();
+
+    SLAM.SaveTrajectoryKITTI("CameraTrajectory.txt");
 
     return 0;
 }
@@ -128,31 +146,48 @@ bool LoadPointCloudGst(cv::Mat &pcd, GstElement *appsink)
     GstBuffer *buffer = gst_sample_get_buffer(sample);
     GstMapInfo map;
 
-    static cv::Mat pcdStatic;
-    static size_t lastNumPoints = 0;
-
     if (gst_buffer_map(buffer, &map, GST_MAP_READ))
     {
-        size_t numPoints = map.size / (sizeof(float) * 3);
-        
-        if (numPoints != lastNumPoints || pcdStatic.empty())
-        {
-            pcdStatic = cv::Mat::zeros(4, numPoints, CV_32F);
-            lastNumPoints = numPoints;
-        }
-    
         const float *data = reinterpret_cast<const float*>(map.data);
+
+        // Extract data from message
+        const int count_h = int(data[0]);
+        const int count_v = int(data[1]);
+        const float angle_min_h = data[2];
+        const float angle_step_h = data[3];
+        const float angle_min_v = data[4];
+        const float angle_step_v = data[5];
+        const float *ranges = data + 6;
         
-        float *pcd_ptr = pcdStatic.ptr<float>(0);
-        for (size_t i = 0; i < numPoints; i++)
+        // Initialize pcd
+        pcd = cv::Mat::zeros(4, count_h * count_v, CV_32F);
+
+        // Calculate (x, y, z) for each point to fill pcd
+        for (int v = 0; v < count_v; v++)
         {
-            pcd_ptr[i] = data[i * 3 + 0];
-            pcd_ptr[i + numPoints] = data[i * 3 + 1];
-            pcd_ptr[i + numPoints * 2] = data[i * 3 + 2];
-            pcd_ptr[i + numPoints * 3] = 1.0f;
+            float angle_v = angle_min_v + v * angle_step_v;
+            for (int h = 0; h < count_h; h++)
+            {
+                float angle_h = angle_min_h + h * angle_step_h;
+                int i = v * count_h + h;
+                float r = ranges[i];
+
+                // skip invalid point
+                if (std::isnan(r)) continue;
+
+                // 3D point calculation
+                float x = r * cosf(angle_v) * cosf(angle_h);
+                float y = r * cosf(angle_v) * sinf(angle_h);
+                float z = r * sinf(angle_v);
+
+                // Fill pcd
+                pcd.ptr<float>(0)[i] = x;
+                pcd.ptr<float>(1)[i] = y;
+                pcd.ptr<float>(2)[i] = z;
+                pcd.ptr<float>(3)[i] = 1.0f;
+            }
         }
 
-        pcd = pcdStatic;
         gst_buffer_unmap(buffer, &map);
     }
     else
@@ -163,30 +198,4 @@ bool LoadPointCloudGst(cv::Mat &pcd, GstElement *appsink)
 
     gst_sample_unref(sample);
     return true;
-}
-
-void DataGrabber(cv::VideoCapture& cap, GstElement* appsink) {
-    cv::Mat img, pcd;
-    bool successPcd;
-
-    while (!stopSLAM) {
-        successPcd = LoadPointCloudGst(pcd, appsink);
-        
-        if (!successPcd || !cap.read(img)) {
-            std::cout << "Could not load frame, skipping\n";
-            continue;
-        }
-
-        double timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(
-            std::chrono::steady_clock::now().time_since_epoch()
-        ).count();
-
-        {
-            std::lock_guard<std::mutex> lock(dataMutex);
-            latestImg = img.clone();
-            latestPcd = pcd.clone();
-            latestTimestamp = timestamp;
-            newDataAvailable = true;
-        }
-    }
 }

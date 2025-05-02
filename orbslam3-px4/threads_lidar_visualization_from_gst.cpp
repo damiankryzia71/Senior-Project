@@ -6,10 +6,14 @@
 
 #include <iostream>
 #include <vector>
-#include <array>
 #include <string>
+#include <thread>
 
 bool LoadPointCloudGst(cv::Mat &pcd, GstElement *appsink);
+void ComputePointCloudChunk(cv::Mat &pcd, const float *ranges, 
+                            int start_idx, int end_idx, int count_h, 
+                            float angle_min_h, float angle_step_h, 
+                            float angle_min_v, float angle_step_v);
 void DisplayPointCloud(const cv::Mat &pcd);
 
 int main(int argc, char** argv) {
@@ -49,6 +53,7 @@ int main(int argc, char** argv) {
         if (!successPcd)
         {
             std::cout << "Could not load frame, skipping\n";
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
             continue;
         }
 
@@ -80,8 +85,8 @@ bool LoadPointCloudGst(cv::Mat &pcd, GstElement *appsink)
         const float *data = reinterpret_cast<const float*>(map.data);
 
         // Extract data from message
-        const int count_h = int(data[0]);
-        const int count_v = int(data[1]);
+        const int count_h = static_cast<int>(data[0]);
+        const int count_v = static_cast<int>(data[1]);
         const float angle_min_h = data[2];
         const float angle_step_h = data[3];
         const float angle_min_v = data[4];
@@ -91,30 +96,21 @@ bool LoadPointCloudGst(cv::Mat &pcd, GstElement *appsink)
         // Initialize pcd
         pcd = cv::Mat::zeros(3, count_h * count_v, CV_32F);
 
+        int n = count_h * count_v; // total points
+        int num_threads = (n / 1000) + 1;
+        int chunk = n / num_threads;
+
         // Calculate (x, y, z) for each point to fill pcd
-        for (int v = 0; v < count_v; v++)
+        std::vector<std::thread> threads;
+        for (int i = 0; i < num_threads; i++)
         {
-            float angle_v = angle_min_v + v * angle_step_v;
-            for (int h = 0; h < count_h; h++)
-            {
-                float angle_h = angle_min_h + h * angle_step_h;
-                int i = v * count_h + h;
-                float r = ranges[i];
+            int start = i * chunk;
+            int end = (i == num_threads - 1) ? n : start + chunk;
 
-                // skip invalid point
-                if (std::isnan(r)) continue;
-
-                // 3D point calculation
-                float x = r * cosf(angle_v) * cosf(angle_h);
-                float y = r * cosf(angle_v) * sinf(angle_h);
-                float z = r * sinf(angle_v);
-
-                // Fill pcd
-                pcd.at<float>(0, i) = x;
-                pcd.at<float>(1, i) = y;
-                pcd.at<float>(2, i) = z;
-            }
+            threads.emplace_back(ComputePointCloudChunk, std::ref(pcd), ranges, start, end, count_h, angle_min_h, angle_step_h, angle_min_v, angle_step_v);
         }
+        
+        for (auto &t : threads) t.join();
 
         gst_buffer_unmap(buffer, &map);
     }
@@ -149,4 +145,29 @@ void DisplayPointCloud(const cv::Mat &pcd) {
 
     cv::imshow("Point Cloud", display);
     cv::waitKey(30);
+}
+
+void ComputePointCloudChunk(cv::Mat &pcd, const float *ranges, 
+    int start_idx, int end_idx, int count_h, 
+    float angle_min_h, float angle_step_h, 
+    float angle_min_v, float angle_step_v)
+{
+    for (int i = start_idx; i < end_idx; ++i) {
+        int v = i / count_h;
+        int h = i % count_h;
+
+        float angle_v = angle_min_v + v * angle_step_v;
+        float angle_h = angle_min_h + h * angle_step_h;
+        float r = ranges[i];
+
+        if (std::isnan(r)) continue;
+
+        float x = r * cosf(angle_v) * cosf(angle_h);
+        float y = r * cosf(angle_v) * sinf(angle_h);
+        float z = r * sinf(angle_v);
+
+        pcd.ptr<float>(0)[i] = x;
+        pcd.ptr<float>(1)[i] = y;
+        pcd.ptr<float>(2)[i] = z;
+    }
 }

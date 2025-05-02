@@ -1,4 +1,4 @@
-      <sensor name='lidar_sensor' type='ray'>
+      <sensor name='lidar_sensor' type='gpu_ray'>
         <pose>0.0 0 -0.162 0 0 0</pose>
         <always_on>1</always_on>
         <visualize>1</visualize>

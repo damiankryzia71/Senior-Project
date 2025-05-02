@@ -1,61 +1,30 @@
 #include <opencv2/core/core.hpp>
-#include <gst/gst.h>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 
-#include "System.h"
+#include <gst/gst.h>
 
 #include <iostream>
 #include <vector>
 #include <array>
-#include <thread>
 #include <string>
-#include <atomic>
-#include <chrono>
 
 bool LoadPointCloudGst(cv::Mat &pcd, GstElement *appsink);
-
-std::atomic<bool> stopSLAM(false);
-
-void listenForStopCommand() {
-    std::string input;
-    while (!stopSLAM) {
-        std::cin >> input;
-        if (input == "stop") {
-            stopSLAM = true;
-            std::cout << "Stopping ORB-SLAM3..." << std::endl;
-        }
-    }
-}
+void DisplayPointCloud(const cv::Mat &pcd);
 
 int main(int argc, char** argv) {
     gst_init(&argc, &argv);
 
-    if (argc < 5) {
-        std::cerr << "Usage: " << argv[0] << " path_to_vocabulary path_to_settings camera_port lidar_port" << std::endl;
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << "lidar_port" << std::endl;
         return 1;
     }
 
-    std::string path_to_vocabulary = argv[1];
-    std::string path_to_settings = argv[2];
-    std::string camera_port = argv[3];
-    std::string lidar_port = argv[4];
-
-    std::string camera_pipeline_desc = 
-    "udpsrc port=" + camera_port + " ! "
-    "application/x-rtp,media=video,encoding-name=H264,payload=96 ! "
-    "rtph264depay ! avdec_h264 ! videoconvert ! "
-    "appsink";
+    std::string lidar_port = argv[1];
 
     std::string lidar_pipeline_desc = 
-    "udpsrc port=" + lidar_port + " ! "
+    "udpsrc port=" + lidar_port + " ! " 
     "appsink name=mysink";
-
-    cv::VideoCapture cap(camera_pipeline_desc, cv::CAP_GSTREAMER);
-
-    if (!cap.isOpened())
-    {
-        std::cerr << "Failed to open video stream" << std::endl;
-        return 1;
-    }
 
     GError *error = nullptr;
     GstElement *pipeline = gst_parse_launch(lidar_pipeline_desc.c_str(), &error);
@@ -71,64 +40,24 @@ int main(int argc, char** argv) {
 
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 
-    std::thread stopListener(listenForStopCommand);
-    
-    ORB_SLAM3::System SLAM(path_to_vocabulary, path_to_settings, ORB_SLAM3::System::RGBL, true);
-    
-    cv::Mat img, pcd;
-    bool success;
+    cv::Mat pcd;
+    bool successPcd;
+    while (true)
+    {
+        successPcd = LoadPointCloudGst(pcd, appsink);
 
-    // FPS monitoring
-    auto last_time = std::chrono::steady_clock::now();
-    int frame_count = 0;
-
-    while (!stopSLAM) {
-        cap.read(img);
-        success = LoadPointCloudGst(pcd, appsink);
-
-        if (!success)
+        if (!successPcd)
         {
-            std::cerr << "Failed to load point cloud, skipping frame" << std::endl;
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            std::cout << "Could not load frame, skipping\n";
             continue;
         }
 
-        if (img.empty())
-        {
-            std::cerr << "Failed to load image, skipping frame" << std::endl;
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            continue;
-        }
-
-        double timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(
-            std::chrono::steady_clock::now().time_since_epoch()
-        ).count();
-
-        SLAM.TrackRGBL(img, pcd, timestamp);
-
-        // FPS monitoring
-        frame_count++;
-
-        auto now = std::chrono::steady_clock::now();
-        std::chrono::duration<double> elapsed = now - last_time;
-
-        if (elapsed.count() >= 1.0) {
-            std::cout << "Frames per second: " << frame_count << std::endl;
-            frame_count = 0;
-            last_time = now;
-        }
+        DisplayPointCloud(pcd);
     }
-    
-    SLAM.Shutdown();
-    
-    cap.release();
+
     gst_element_set_state(pipeline, GST_STATE_NULL);
     gst_object_unref(appsink);
     gst_object_unref(pipeline);
-    
-    stopListener.join();
-
-    SLAM.SaveTrajectoryKITTI("CameraTrajectory.txt");
 
     return 0;
 }
@@ -155,8 +84,8 @@ bool LoadPointCloudGst(cv::Mat &pcd, GstElement *appsink)
 
     const float *data = reinterpret_cast<const float*>(map.data);
 
-    const int count_h = int(data[0]);
-    const int count_v = int(data[1]);
+    const int count_h = static_cast<int>(data[0]);
+    const int count_v = static_cast<int>(data[1]);
     const float angle_min_h = data[2];
     const float angle_step_h = data[3];
     const float angle_min_v = data[4];
@@ -211,6 +140,29 @@ bool LoadPointCloudGst(cv::Mat &pcd, GstElement *appsink)
 
     gst_buffer_unmap(buffer, &map);
     gst_sample_unref(sample);
-
+    
     return true;
+}
+
+void DisplayPointCloud(const cv::Mat &pcd) {
+    int image_size = 800;
+    cv::Mat display = cv::Mat::zeros(image_size, image_size, CV_8UC3);
+
+    float scale = 50.0f;
+    cv::Point2f center(image_size / 2.0f, image_size / 2.0f);
+
+    for (int i = 0; i < pcd.cols; i++) {
+        float x = pcd.at<float>(0, i);
+        float y = pcd.at<float>(1, i);
+
+        int u = static_cast<int>(x * scale + center.x);
+        int v = static_cast<int>(y * scale + center.y);
+
+        if (u >= 0 && u < image_size && v >= 0 && v < image_size) {
+            cv::circle(display, cv::Point(u, v), 1, cv::Scalar(0, 255, 0), -1);
+        }
+    }
+
+    cv::imshow("Point Cloud", display);
+    cv::waitKey(30);
 }

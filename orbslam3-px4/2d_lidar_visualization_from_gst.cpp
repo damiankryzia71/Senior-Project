@@ -75,56 +75,53 @@ bool LoadPointCloudGst(cv::Mat &pcd, GstElement *appsink)
     GstBuffer *buffer = gst_sample_get_buffer(sample);
     GstMapInfo map;
 
-    if (gst_buffer_map(buffer, &map, GST_MAP_READ))
-    {
-        const float *data = reinterpret_cast<const float*>(map.data);
-
-        // Extract data from message
-        const int count_h = int(data[0]);
-        const int count_v = int(data[1]);
-        const float angle_min_h = data[2];
-        const float angle_step_h = data[3];
-        const float angle_min_v = data[4];
-        const float angle_step_v = data[5];
-        const float *ranges = data + 6;
-        
-        // Initialize pcd
-        pcd = cv::Mat::zeros(3, count_h * count_v, CV_32F);
-
-        // Calculate (x, y, z) for each point to fill pcd
-        for (int v = 0; v < count_v; v++)
-        {
-            float angle_v = angle_min_v + v * angle_step_v;
-            for (int h = 0; h < count_h; h++)
-            {
-                float angle_h = angle_min_h + h * angle_step_h;
-                int i = v * count_h + h;
-                float r = ranges[i];
-
-                // skip invalid point
-                if (std::isnan(r)) continue;
-
-                // 3D point calculation
-                float x = r * cosf(angle_v) * cosf(angle_h);
-                float y = r * cosf(angle_v) * sinf(angle_h);
-                float z = r * sinf(angle_v);
-
-                // Fill pcd
-                pcd.at<float>(0, i) = x;
-                pcd.at<float>(1, i) = y;
-                pcd.at<float>(2, i) = z;
-            }
-        }
-
-        gst_buffer_unmap(buffer, &map);
-    }
-    else
+    if (!gst_buffer_map(buffer, &map, GST_MAP_READ))
     {
         std::cerr << "Failed to map buffer." << std::endl;
+        gst_sample_unref(sample);
         return false;
     }
 
+    const float *data = reinterpret_cast<const float*>(map.data);
+
+    const int count = static_cast<int>(data[0]);
+    const float angle_min = data[1];
+    const float angle_step = data[2];
+    const float *ranges = data + 3;
+
+    std::vector<cv::Vec2f> validPoints;
+
+    for (int i = 0; i < count; ++i)
+    {
+        float r = ranges[i];
+        if (!std::isfinite(r) || r <= 0.05f || r > 50.0f)
+            continue;
+
+        float angle = angle_min + i * angle_step;
+        float x = r * cosf(angle);
+        float y = r * sinf(angle);
+
+        validPoints.emplace_back(cv::Vec2f(x, y));
+    }
+
+    if (validPoints.empty())
+    {
+        std::cerr << "No valid LiDAR points found." << std::endl;
+        gst_buffer_unmap(buffer, &map);
+        gst_sample_unref(sample);
+        return false;
+    }
+
+    pcd = cv::Mat(2, validPoints.size(), CV_32F);
+    for (size_t i = 0; i < validPoints.size(); ++i)
+    {
+        pcd.at<float>(0, i) = validPoints[i][0];
+        pcd.at<float>(1, i) = validPoints[i][1];
+    }
+
+    gst_buffer_unmap(buffer, &map);
     gst_sample_unref(sample);
+    
     return true;
 }
 

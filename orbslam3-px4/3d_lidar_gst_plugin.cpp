@@ -146,8 +146,8 @@ namespace gazebo
                 // New buffer fill logic - send array of floats in the format [count_h, count_v, angle_min_h, angle_step_h, angle_min_v, angle_step_v, ...ranges]
                 float *data = reinterpret_cast<float*>(map.data);
 
-                data[0] = count_h;
-                data[1] = count_v;
+                data[0] = static_cast<float>(count_h);
+                data[1] = static_cast<float>(count_v);
                 data[2] = angle_min_h;
                 data[3] = angle_step_h;
                 data[4] = angle_min_v;

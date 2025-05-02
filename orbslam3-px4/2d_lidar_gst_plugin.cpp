@@ -60,7 +60,7 @@ namespace gazebo
                 }
 
                 // configure appsrc
-                GstCaps *caps = gst_caps_new_simple("application/octet-stream", nullptr);
+                GstCaps *caps = gst_caps_new_simple("application/octet-stream", "media", G_TYPE_STRING, "application", nullptr);
                 g_object_set(this->appsrc, "caps", caps, "format", GST_FORMAT_TIME, "is-live", TRUE, nullptr);
 
                 gst_bin_add_many(GST_BIN(this->pipeline), this->appsrc, this->tee, nullptr);
@@ -109,16 +109,21 @@ namespace gazebo
             void msgCallback(ConstLaserScanStampedPtr &msg)
             {
                 const gazebo::msgs::LaserScan &scan = msg->scan();
-                const int n = scan.ranges_size();
+
+                const int count = scan.count();
+
+                // Check if we can set these values to static
+                const float angle_min = scan.angle_min();
+                const float angle_step = scan.angle_step();
             
-                if (n == 0)
+                if (count == 0)
                 {
                     std::cerr << "Empty scan received, skipping." << std::endl;
                     return;
                 }
             
-                // Allocate buffer for (x, y, z) per point
-                GstBuffer *buffer = gst_buffer_new_allocate(nullptr, n * 3 * sizeof(float), nullptr);
+                // Allocate buffer for number of scans (n) + count_v, count_h, angle_min_h, angle_step_h, angle_min_v, angle_step_v
+                GstBuffer *buffer = gst_buffer_new_allocate(nullptr, (count + 3) * sizeof(float), nullptr);
                 if (!buffer)
                 {
                     std::cerr << "Failed to allocate GStreamer buffer." << std::endl;
@@ -132,33 +137,18 @@ namespace gazebo
                     gst_buffer_unref(buffer);
                     return;
                 }
-            
-                // Fill buffer with (x, y, z) points
-                const float angle_min = scan.angle_min();
-                const float angle_step = scan.angle_step();
-            
-                for (int i = 0; i < n; ++i)
-                {
+                
+                // New buffer fill logic - send array of floats in the format [count, angle_min, angle_step]
+                float *data = reinterpret_cast<float*>(map.data);
+
+                data[0] = static_cast<float>(count);
+                data[1] = angle_min;
+                data[2] = angle_step;
+
+                for (int i = 0; i < count; i++)
+                {   
                     float r = scan.ranges(i);
-            
-                    // Handle invalid range values if necessary
-                    if (r < scan.range_min() || r > scan.range_max())
-                    {
-                        // Mark invalid points as NaN (or zeros depending on your needs)
-                        ((float*)map.data)[i * 3 + 0] = std::numeric_limits<float>::quiet_NaN();
-                        ((float*)map.data)[i * 3 + 1] = std::numeric_limits<float>::quiet_NaN();
-                        ((float*)map.data)[i * 3 + 2] = std::numeric_limits<float>::quiet_NaN();
-                        continue;
-                    }
-            
-                    float angle = angle_min + i * angle_step;
-                    float x = r * cosf(angle);
-                    float y = r * sinf(angle);
-                    float z = 0.0f; // 2D laser; if it's a 3D scan, modify accordingly
-            
-                    ((float*)map.data)[i * 3 + 0] = x;
-                    ((float*)map.data)[i * 3 + 1] = y;
-                    ((float*)map.data)[i * 3 + 2] = z;
+                    data[i + 3] = (r < scan.range_min() || r > scan.range_max()) ? std::numeric_limits<float>::quiet_NaN() : r;
                 }
             
                 gst_buffer_unmap(buffer, &map);
@@ -170,7 +160,7 @@ namespace gazebo
             
                 if (ret != GST_FLOW_OK)
                     std::cerr << "Failed to push buffer to appsrc\n";
-            }                          
+            }                                  
 
         private:
             sensors::SensorPtr sensor;

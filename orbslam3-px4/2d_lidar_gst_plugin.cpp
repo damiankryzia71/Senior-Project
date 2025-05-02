@@ -122,7 +122,7 @@ namespace gazebo
                     return;
                 }
             
-                // Allocate buffer for number of scans (n) + count_v, count_h, angle_min_h, angle_step_h, angle_min_v, angle_step_v
+                // Allocate buffer for number of scans (count) + count, angle_min, angle_step
                 GstBuffer *buffer = gst_buffer_new_allocate(nullptr, (count + 3) * sizeof(float), nullptr);
                 if (!buffer)
                 {

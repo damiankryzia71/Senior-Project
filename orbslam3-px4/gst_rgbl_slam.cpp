@@ -41,9 +41,8 @@ int main(int argc, char** argv) {
 
     std::string camera_pipeline_desc = 
     "udpsrc port=" + camera_port + " ! "
-    "application/x-rtp,media=video,encoding-name=H264,payload=96 ! "
-    "rtph264depay ! avdec_h264 ! videoconvert ! "
-    "appsink";
+    "application/x-rtp, media=video, encoding-name=H264, payload=96 ! "
+    "rtph264depay ! avdec_h264 ! videoconvert ! appsink";
 
     std::string lidar_pipeline_desc = 
     "udpsrc port=" + lidar_port + " ! "

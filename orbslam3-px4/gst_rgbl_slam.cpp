@@ -9,10 +9,27 @@
 #include <string>
 #include <atomic>
 #include <chrono>
+#include <mutex>
+#include <queue>
+#include <cmath>
+#include <functional>
+
+struct ImageStamped {
+    double timestamp;
+    cv::Mat image;
+};
+
+struct PointCloudStamped {
+    double timestamp;
+    cv::Mat pointCloud;
+};
 
 bool LoadPointCloudGst(cv::Mat &pcd, GstElement *appsink);
 
 std::atomic<bool> stopSLAM(false);
+std::mutex img_mutex, lidar_mutex;
+std::queue<ImageStamped> image_queue;
+std::queue<PointCloudStamped> lidar_queue;
 
 void listenForStopCommand() {
     std::string input;
@@ -22,6 +39,41 @@ void listenForStopCommand() {
             stopSLAM = true;
             std::cout << "Stopping ORB-SLAM3..." << std::endl;
         }
+    }
+}
+
+void getImagesStamped(cv::VideoCapture &cap) {
+    while (!stopSLAM) {
+        cv::Mat img;
+        cap.read(img);
+        double ts = std::chrono::duration<double>(
+                        std::chrono::steady_clock::now().time_since_epoch()
+                    ).count();
+
+        if (!img.empty()) {
+            std::lock_guard<std::mutex> lock(img_mutex);
+            image_queue.push({ts, img});
+            if (image_queue.size() > 100) image_queue.pop();
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+}
+
+void getPointCloudDataStamped(GstElement *appsink) {
+    while (!stopSLAM) {
+        cv::Mat pcd;
+        if (LoadPointCloudGst(pcd, appsink)) {
+            double ts = std::chrono::duration<double>(
+                            std::chrono::steady_clock::now().time_since_epoch()
+                        ).count();
+
+            std::lock_guard<std::mutex> lock(lidar_mutex);
+            lidar_queue.push({ts, pcd});
+            if (lidar_queue.size() > 100) lidar_queue.pop();
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 }
 
@@ -72,45 +124,43 @@ int main(int argc, char** argv) {
     std::thread stopListener(listenForStopCommand);
     
     ORB_SLAM3::System SLAM(path_to_vocabulary, path_to_settings, ORB_SLAM3::System::RGBL, true);
-    
-    cv::Mat img, pcd;
-    bool success;
 
-    double time_img = 0.0;
-    double time_lidar = 0.0;
+    std::thread cameraThread(getImagesStamped, std::ref(cap));
+    std::thread lidarThread(getPointCloudDataStamped, appsink);
+    
+    const double max_dt = 0.03;
+    ImageStamped img;
+    PointCloudStamped pcd;
 
     while (!stopSLAM) {
-        auto t_img_start = std::chrono::steady_clock::now();
-        cap.read(img);
-        time_img = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now().time_since_epoch()).count();
-    
-        auto t_lidar_start = std::chrono::steady_clock::now();
-        success = LoadPointCloudGst(pcd, appsink);
-        time_lidar = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now().time_since_epoch()).count();
-
-        if (!success)
         {
-            std::cerr << "Failed to load point cloud, skipping frame" << std::endl;
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            continue;
+            std::lock_guard<std::mutex> lock1(img_mutex);
+            std::lock_guard<std::mutex> lock2(lidar_mutex);
+    
+            if (image_queue.empty() || lidar_queue.empty())
+                continue;
+    
+            img = image_queue.front();
+            pcd = lidar_queue.front();
+    
+            double dt = std::abs(img.timestamp - pcd.timestamp);
+            if (dt < max_dt) {
+                image_queue.pop();
+                lidar_queue.pop();
+            } 
+            else if (img.timestamp < pcd.timestamp)
+            {
+                image_queue.pop();
+                continue;
+            } 
+            else 
+            {
+                lidar_queue.pop();
+                continue;
+            }
         }
 
-        if (img.empty())
-        {
-            std::cerr << "Failed to load image, skipping frame" << std::endl;
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            continue;
-        }
-
-        double dt = std::abs(time_img - time_lidar);
-        if (dt > 0.03) {
-            std::cerr << "[Sync] Time mismatch (Δt = " << dt << " s), skipping frame pair" << std::endl;
-            continue;
-        }
-    
-        double avg_time = (time_img + time_lidar) / 2.0;
-    
-        SLAM.TrackRGBL(img, pcd, avg_time);
+        SLAM.TrackRGBL(img.image, pcd.pointCloud, (img.timestamp + pcd.timestamp) / 2.0);
     }
     
     SLAM.Shutdown();
@@ -121,6 +171,8 @@ int main(int argc, char** argv) {
     gst_object_unref(pipeline);
     
     stopListener.join();
+    cameraThread.join();
+    lidarThread.join();
 
     SLAM.SaveTrajectoryKITTI("CameraTrajectory.txt");
 

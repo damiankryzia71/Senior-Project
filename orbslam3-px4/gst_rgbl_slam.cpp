@@ -5,7 +5,6 @@
 
 #include <iostream>
 #include <vector>
-#include <array>
 #include <thread>
 #include <string>
 #include <atomic>
@@ -77,13 +76,17 @@ int main(int argc, char** argv) {
     cv::Mat img, pcd;
     bool success;
 
-    // FPS monitoring
-    auto last_time = std::chrono::steady_clock::now();
-    int frame_count = 0;
+    double time_img = 0.0;
+    double time_lidar = 0.0;
 
     while (!stopSLAM) {
+        auto t_img_start = std::chrono::steady_clock::now();
         cap.read(img);
+        time_img = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    
+        auto t_lidar_start = std::chrono::steady_clock::now();
         success = LoadPointCloudGst(pcd, appsink);
+        time_lidar = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now().time_since_epoch()).count();
 
         if (!success)
         {
@@ -99,23 +102,15 @@ int main(int argc, char** argv) {
             continue;
         }
 
-        double timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(
-            std::chrono::steady_clock::now().time_since_epoch()
-        ).count();
-
-        SLAM.TrackRGBL(img, pcd, timestamp);
-
-        // FPS monitoring
-        frame_count++;
-
-        auto now = std::chrono::steady_clock::now();
-        std::chrono::duration<double> elapsed = now - last_time;
-
-        if (elapsed.count() >= 1.0) {
-            std::cout << "Frames per second: " << frame_count << std::endl;
-            frame_count = 0;
-            last_time = now;
+        double dt = std::abs(time_img - time_lidar);
+        if (dt > 0.03) {
+            std::cerr << "[Sync] Time mismatch (Δt = " << dt << " s), skipping frame pair" << std::endl;
+            continue;
         }
+    
+        double avg_time = (time_img + time_lidar) / 2.0;
+    
+        SLAM.TrackRGBL(img, pcd, avg_time);
     }
     
     SLAM.Shutdown();

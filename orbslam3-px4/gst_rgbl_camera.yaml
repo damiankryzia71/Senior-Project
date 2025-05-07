@@ -3,8 +3,8 @@
 #--------------------------------------------------------------------------------------------
 # System config
 #--------------------------------------------------------------------------------------------
-#System.SaveAtlasToFile: "session_gst_rgbl"
-System.LoadAtlasFromFile: "session_gst_rgbl"
+System.SaveAtlasToFile: "slam_session"
+#System.LoadAtlasFromFile: "slam_session"
 
 #--------------------------------------------------------------------------------------------
 # Camera Parameters. Adjust them!
@@ -35,7 +35,7 @@ Camera.fps: 30.0
 Camera.bf: 100.0
 
 # Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
-Camera.RGB: 1
+Camera.RGB: 0
 
 # Close/Far threshold. Baseline times.
 Stereo.ThDepth: 700.0
@@ -120,4 +120,3 @@ Viewer.ViewpointX: 0.0
 Viewer.ViewpointY: -100.0
 Viewer.ViewpointZ: -0.1
 Viewer.ViewpointF: 2000.0
-

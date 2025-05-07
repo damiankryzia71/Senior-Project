@@ -163,19 +163,18 @@ int main(int argc, char** argv) {
         SLAM.TrackRGBL(img.image, pcd.pointCloud, (img.timestamp + pcd.timestamp) / 2.0);
     }
     
+    cameraThread.join();
+    lidarThread.join();
+    stopListener.join();
+
+    SLAM.SaveTrajectoryKITTI("CameraTrajectory.txt");
     SLAM.Shutdown();
-    
+
     cap.release();
     gst_element_set_state(pipeline, GST_STATE_NULL);
     gst_object_unref(appsink);
     gst_object_unref(pipeline);
     
-    stopListener.join();
-    cameraThread.join();
-    lidarThread.join();
-
-    SLAM.SaveTrajectoryKITTI("CameraTrajectory.txt");
-
     return 0;
 }
 

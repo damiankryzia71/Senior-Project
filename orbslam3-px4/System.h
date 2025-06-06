@@ -136,6 +136,7 @@ public:
 
     Atlas* GetAtlas() { return mpAtlas; }
     void ExportMapPointsToPLY(const std::string &filename);
+    void ExportMapPointsToPCD(const std::string &filename);
 
     // This stops local mapping thread (map building) and performs only camera tracking.
     void ActivateLocalizationMode();

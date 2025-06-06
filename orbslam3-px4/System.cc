@@ -634,6 +634,50 @@ void System::ExportMapPointsToPLY(const std::string &filename)
     file.close();
 }
 
+void System::ExportMapPointsToPCD(const std::string &filename)
+{
+    std::ofstream file(filename);
+    if (!file.is_open())
+    {
+        std::cerr << "Could not open file: " << filename << std::endl;
+        return;
+    }
+
+    auto mapPoints = mpAtlas->GetCurrentMap()->GetAllMapPoints();
+
+    // Count valid points
+    size_t validPointCount = 0;
+    for (auto pMP : mapPoints)
+    {
+        if (pMP && !pMP->isBad())
+            ++validPointCount;
+    }
+
+    // Write PCD header (ASCII format)
+    file << "# .PCD v0.7 - Point Cloud Data file format\n";
+    file << "VERSION 0.7\n";
+    file << "FIELDS x y z\n";
+    file << "SIZE 4 4 4\n";
+    file << "TYPE F F F\n";
+    file << "COUNT 1 1 1\n";
+    file << "WIDTH " << validPointCount << "\n";
+    file << "HEIGHT 1\n";
+    file << "VIEWPOINT 0 0 0 1 0 0 0\n";
+    file << "POINTS " << validPointCount << "\n";
+    file << "DATA ascii\n";
+
+    // Write point data
+    file << std::fixed << std::setprecision(6);
+    for (auto pMP : mapPoints)
+    {
+        if (!pMP || pMP->isBad()) continue;
+        auto pos = pMP->GetWorldPos();
+        file << pos[0] << " " << pos[1] << " " << pos[2] << "\n";
+    }
+
+    file.close();
+}
+
 void System::ActivateLocalizationMode()
 {
     unique_lock<mutex> lock(mMutexMode);
@@ -1707,3 +1751,4 @@ string System::CalculateCheckSum(string filename, int type)
 }
 
 } //namespace ORB_SLAM
+

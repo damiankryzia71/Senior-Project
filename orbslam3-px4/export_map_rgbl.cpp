@@ -26,6 +26,7 @@ int main(int argc, char** argv)
     std::cout << "Map loaded, exporting..." << std::endl;
 
     SLAM.ExportMapPointsToPLY("map_points.ply");
+    SLAM.ExportMapPointsToPCD("map_points.pcd");
 
     std::cout << "Map exported, done." << std::endl;
 

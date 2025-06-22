@@ -97,7 +97,7 @@ target_link_libraries(track_rgbl_node ${PROJECT_NAME})
 
 install(TARGETS
   ${PROJECT_NAME}
-  realsense_subscriber
+  track_monocular_node
   track_rgbl_node
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib

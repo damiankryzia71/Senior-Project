@@ -87,9 +87,9 @@ ament_target_dependencies(${PROJECT_NAME}
   Pangolin
 )
 
-add_executable(realsense_subscriber src/realsense_subscriber.cpp)
-ament_target_dependencies(realsense_subscriber rclcpp sensor_msgs OpenCV cv_bridge Eigen3 Pangolin)
-target_link_libraries(realsense_subscriber ${PROJECT_NAME})
+add_executable(track_monocular_node src/track_monocular_node.cpp)
+ament_target_dependencies(track_monocular_node rclcpp sensor_msgs OpenCV cv_bridge Eigen3 Pangolin)
+target_link_libraries(track_monocular_node ${PROJECT_NAME})
 
 add_executable(track_rgbl_node src/track_rgbl_node.cpp)
 ament_target_dependencies(track_rgbl_node rclcpp sensor_msgs OpenCV cv_bridge Eigen3 Pangolin)

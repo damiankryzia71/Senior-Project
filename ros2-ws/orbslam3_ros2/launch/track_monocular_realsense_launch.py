@@ -22,12 +22,12 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'slam_vocab_path',
-            default_value='home/rescue1/ros2-ws/src/orbslam3_ros2/ORBvoc.txt',
+            default_value='/home/rescue1/ros2-ws/src/orbslam3_ros2/ORBvoc.txt',
             description='Path to ORB-SLAM3 vocabulary file'
         ),
         DeclareLaunchArgument(
             'slam_config_path',
-            default_value='home/rescue1/ros2-ws/src/orbslam3_ros2/monocular_config.yaml',
+            default_value='/home/rescue1/ros2-ws/src/orbslam3_ros2/monocular_config.yaml',
             description='Path to ORB-SLAM3 configuration YAML'
         ),
 

@@ -28,28 +28,28 @@ public:
     this->declare_parameter<std::string>("slam_vocab_path");
     this->declare_parameter<std::string>("slam_config_path");
 
-    if (!this->get_parameter("image_topic", image_topic_))
+    if (!this->get_parameter("image_topic", this->image_topic_))
     {
       RCLCPP_ERROR(this->get_logger(), "Parameter 'image_topic' is required but not set.");
       rclcpp::shutdown();
       return;
     }
 
-    if (!this->get_parameter("pcd_topic", pcd_topic_))
+    if (!this->get_parameter("pcd_topic", this->pcd_topic_))
     {
       RCLCPP_ERROR(this->get_logger(), "Parameter 'pcd_topic' is required but not set.");
       rclcpp::shutdown();
       return;
     }
 
-    if (!this->get_parameter("slam_vocab_path", slam_vocab_path_))
+    if (!this->get_parameter("slam_vocab_path", this->slam_vocab_path_))
     {
       RCLCPP_ERROR(this->get_logger(), "Parameter 'slam_vocab_path' is required but not set.");
       rclcpp::shutdown();
       return;
     }
 
-    if (!this->get_parameter("slam_config_path", slam_config_path_))
+    if (!this->get_parameter("slam_config_path", this->slam_config_path_))
     {
       RCLCPP_ERROR(this->get_logger(), "Parameter 'slam_config_path' is required but not set.");
       rclcpp::shutdown();

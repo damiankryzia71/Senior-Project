@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd"
+            schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>orbslam3_ros2</name>
+  <version>0.0.0</version>
+  <description>ROS 2 integration of ORB-SLAM3 for RealSense camera inputs.</description>
+
+  <maintainer email="rescue1@todo.todo">rescue1</maintainer>
+  <license>BSD-3-Clause</license>
+
+  <!-- Build tools -->
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- Build dependencies -->
+  <build_depend>rclcpp</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>cv_bridge</build_depend>
+  <build_depend>OpenCV</build_depend>
+  <build_depend>Eigen3</build_depend>
+
+  <!-- Executable/runtime dependencies -->
+  <exec_depend>rclcpp</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>OpenCV</exec_depend>
+  <exec_depend>Eigen3</exec_depend>
+
+  <!-- Pangolin is not a ROS 2 package; add a note -->
+  <!-- External dependency: Pangolin is assumed to be installed system-wide -->
+
+  <!-- Optional: Linting -->
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

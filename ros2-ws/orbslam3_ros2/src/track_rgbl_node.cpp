@@ -73,9 +73,9 @@ public:
 
   ~TrackRGBLNode()
   {
-    slam_running_ = false;
-    if (slam_thread_.joinable())
-      slam_thread_.join();
+    this->slam_running_ = false;
+    if (this->slam_thread_.joinable())
+      this->slam_thread_.join();
 
     shutdown_slam();
   }
@@ -85,37 +85,37 @@ private:
   {
     rclcpp::Rate rate(100);
 
-    while (rclcpp::ok() && slam_running_)
+    while (rclcpp::ok() && this->slam_running_)
     {
       std::pair<cv::Mat, rclcpp::Time> img;
       std::pair<cv::Mat, rclcpp::Time> pcd;
 
       {
-        std::lock_guard<std::mutex> lock_img(img_mutex);
-        std::lock_guard<std::mutex> lock_pcd(pcd_mutex);
+        std::lock_guard<std::mutex> lock_img(this->img_mutex);
+        std::lock_guard<std::mutex> lock_pcd(this->pcd_mutex);
 
-        if (img_queue.empty() || pcd_queue.empty())
+        if (this->img_queue.empty() || this->pcd_queue.empty())
         {
           rate.sleep();
           continue;
         }
 
-        img = img_queue.front();
-        pcd = pcd_queue.front();
+        img = this->img_queue.front();
+        pcd = this->pcd_queue.front();
 
         double dt = std::abs(img.second.seconds() - pcd.second.seconds());
         if (dt > 0.02)
         {
           RCLCPP_WARN(this->get_logger(), "Timestamp mismatch too large (%.6f s), skipping frame pair", dt);
           if (img.second < pcd.second)
-            img_queue.pop();
+            this->img_queue.pop();
           else
-            pcd_queue.pop();
+            this->pcd_queue.pop();
           continue;
         }
 
-        img_queue.pop();
-        pcd_queue.pop();
+        this->img_queue.pop();
+        this->pcd_queue.pop();
       }
 
       if (img.first.empty() || img.first.cols == 0 || img.first.rows == 0)
@@ -135,15 +135,15 @@ private:
       double ts_avg = (ts_img + ts_pcd) / 2.0;
 
       RCLCPP_INFO(this->get_logger(), "Processing synchronized RGB-L frame at avg time: %.6f", ts_avg);
-      SLAM_->TrackRGBL(img.first, pcd.first, ts_avg);
+      this->SLAM_->TrackRGBL(img.first, pcd.first, ts_avg);
     }
   }
 
   void shutdown_slam()
   {
     RCLCPP_INFO(this->get_logger(), "Shutting down SLAM...");
-    SLAM_->SaveTrajectoryKITTI("CameraTrajectory.txt");
-    SLAM_->Shutdown();
+    this->SLAM_->SaveTrajectoryKITTI("CameraTrajectory.txt");
+    this->SLAM_->Shutdown();
     RCLCPP_INFO(this->get_logger(), "SLAM shutdown complete.");
   }
 
@@ -163,9 +163,9 @@ private:
     rclcpp::Time ts = msg.header.stamp;
     RCLCPP_INFO(this->get_logger(), "Timestamp obtained successfully");
 
-    img_queue.push(std::make_pair(img_resized, ts));
-    if (img_queue.size() > kMaxQueueSize)
-      img_queue.pop();
+    this->img_queue.push(std::make_pair(img_resized, ts));
+    if (this->img_queue.size() > kMaxQueueSize)
+      this->img_queue.pop();
   }
 
   void pcd_callback(const sensor_msgs::msg::PointCloud2 &msg)
@@ -214,9 +214,9 @@ private:
 
     rclcpp::Time ts = msg.header.stamp;
 
-    pcd_queue.push(std::make_pair(pcd, ts));
-    if (pcd_queue.size() > kMaxQueueSize)
-      pcd_queue.pop();
+    this->pcd_queue.push(std::make_pair(pcd, ts));
+    if (this->pcd_queue.size() > kMaxQueueSize)
+      this->pcd_queue.pop();
   }
 
   std::string image_topic_;

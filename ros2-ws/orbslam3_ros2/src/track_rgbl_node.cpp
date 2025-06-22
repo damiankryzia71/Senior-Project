@@ -27,6 +27,7 @@ public:
     this->declare_parameter<std::string>("pcd_topic");
     this->declare_parameter<std::string>("slam_vocab_path");
     this->declare_parameter<std::string>("slam_config_path");
+    this->declare_parameter<bool>("with_viewer");
 
     if (!this->get_parameter("image_topic", this->image_topic_))
     {
@@ -56,6 +57,8 @@ public:
       return;
     }
 
+    this->get_parameter("with_viewer", this->with_viewer_);
+
     auto qos = rclcpp::QoS(rclcpp::KeepLast(10))
                    .reliability(rclcpp::ReliabilityPolicy::Reliable)
                    .durability(rclcpp::DurabilityPolicy::Volatile);
@@ -66,7 +69,7 @@ public:
     this->pcd_sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(pcd_topic_, qos, std::bind(&TrackRGBLNode::pcd_callback, this, std::placeholders::_1));
     RCLCPP_INFO(this->get_logger(), "Subscribed to point cloud topic: %s", pcd_topic_.c_str());
 
-    this->SLAM_ = std::make_unique<ORB_SLAM3::System>(slam_vocab_path_, slam_config_path_, ORB_SLAM3::System::RGBL, true);
+    this->SLAM_ = std::make_unique<ORB_SLAM3::System>(slam_vocab_path_, slam_config_path_, ORB_SLAM3::System::RGBL, this->with_viewer_);
 
     this->slam_thread_ = std::thread(&TrackRGBLNode::slam_loop, this);
   }
@@ -223,6 +226,7 @@ private:
   std::string pcd_topic_;
   std::string slam_vocab_path_;
   std::string slam_config_path_;
+  bool with_viewer_;
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr pcd_sub_;
   std::mutex img_mutex, pcd_mutex;

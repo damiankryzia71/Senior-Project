@@ -43,7 +43,11 @@ def generate_launch_description():
         Node(
             package='unitree_lidar_ros2',
             executable='unitree_lidar_ros2_node',
-            name='unitree_lidar_ros2_node'
+            name='unitree_lidar_ros2_node',
+            parameters=[
+                {'range_min': 0.5},
+                {'range_max': 20}
+            ]
         ),
 
         Node(

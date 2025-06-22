@@ -27,7 +27,7 @@ public:
     this->declare_parameter<std::string>("pcd_topic");
     this->declare_parameter<std::string>("slam_vocab_path");
     this->declare_parameter<std::string>("slam_config_path");
-    this->declare_parameter<bool>("with_viewer");
+    this->declare_parameter<bool>("with_viewer", true);
 
     if (!this->get_parameter("image_topic", this->image_topic_))
     {

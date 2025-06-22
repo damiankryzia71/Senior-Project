@@ -22,7 +22,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'pcd_topic',
-            default_value='/lidar/points',
+            default_value='/unilidar/cloud',
             description='Topic name for input point cloud'
         ),
         DeclareLaunchArgument(
@@ -32,7 +32,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'slam_config_path',
-            default_value='home/rescue1/ros2-ws/src/orbslam3_ros2/config.yaml',
+            default_value='home/rescue1/ros2-ws/src/orbslam3_ros2/rgbl_config.yaml',
             description='Path to ORB-SLAM3 configuration YAML'
         ),
 

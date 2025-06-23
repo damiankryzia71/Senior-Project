@@ -104,6 +104,12 @@ install(TARGETS
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
+install(FILES
+  ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
+  ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
+  DESTINATION lib
+)
+
 install(DIRECTORY include/ DESTINATION include)
 
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})

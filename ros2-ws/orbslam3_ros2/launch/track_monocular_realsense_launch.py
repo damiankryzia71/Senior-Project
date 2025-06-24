@@ -30,6 +30,11 @@ def generate_launch_description():
             default_value='/home/rescue1/ros2-ws/src/orbslam3_ros2/monocular_config.yaml',
             description='Path to ORB-SLAM3 configuration YAML'
         ),
+        DeclareLaunchArgument(
+            'with_viewer',
+            default_value='false',
+            description='Path to ORB-SLAM3 configuration YAML'
+        ),
 
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(realsense_launch_file)
@@ -39,10 +44,12 @@ def generate_launch_description():
             package='orbslam3_ros2',
             executable='track_monocular_node',
             name='track_monocular_node',
+            output='screen',
             parameters=[
                 {'topic_name': LaunchConfiguration('topic_name')},
                 {'slam_vocab_path': LaunchConfiguration('slam_vocab_path')},
-                {'slam_config_path': LaunchConfiguration('slam_config_path')}
+                {'slam_config_path': LaunchConfiguration('slam_config_path')},
+                {'with_viewer': LaunchConfiguration('with_viewer')}
             ]
         )
     ])

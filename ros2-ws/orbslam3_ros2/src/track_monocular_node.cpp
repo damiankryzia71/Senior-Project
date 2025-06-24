@@ -16,39 +16,19 @@ public:
         this->declare_parameter<std::string>("slam_config_path");
         this->declare_parameter<bool>("with_viewer", true);
 
-        if (!this->get_parameter("topic_name", this->topic_name_))
-        {
-            RCLCPP_ERROR(this->get_logger(), "Parameter topic_name is required but was not provided.");
-            return;
-        }
-
-        if (!this->get_parameter("slam_vocab_path", this->slam_vocab_path_))
-        {
-            RCLCPP_ERROR(this->get_logger(), "Parameter slam_vocab_path is required but was not provided.");
-            return;
-        }
-
-        if (!this->get_parameter("slam_config_path", this->slam_config_path_))
-        {
-            RCLCPP_ERROR(this->get_logger(), "Parameter slam_config_path is required but was not provided.");
-            return;
-        }
-
+        this->get_parameter("topic_name", this->topic_name_);
+        this->get_parameter("slam_vocab_path", this->slam_vocab_path_);
+        this->get_parameter("slam_config_path", this->slam_config_path_);
         this->get_parameter("with_viewer", this->with_viewer_);
 
         this->SLAM_ = std::make_unique<ORB_SLAM3::System>(this->slam_vocab_path_, this->slam_config_path_, ORB_SLAM3::System::MONOCULAR, this->with_viewer_);
-        RCLCPP_INFO(this->get_logger(), "SLAM initialized succesfully");
-
         this->sub_ = this->create_subscription<sensor_msgs::msg::Image>(this->topic_name_, 10, std::bind(&TrackMonocularNode::img_callback, this, std::placeholders::_1));
-        RCLCPP_INFO(this->get_logger(), "Successfully subscribed to topic %s", this->topic_name_.c_str());
     }
 
     ~TrackMonocularNode()
     {
-      RCLCPP_INFO(this->get_logger(), "Shutting down SLAM...");
       this->SLAM_->SaveTrajectoryKITTI("CameraTrajectory.txt");
       this->SLAM_->Shutdown();
-      RCLCPP_INFO(this->get_logger(), "SLAM shutdown complete.");
     }
 
 private:
@@ -63,7 +43,7 @@ private:
 
     std::string topic_name_;
     std::string slam_vocab_path_;
-    std::string slam_config_path;
+    std::string slam_config_path_;
     bool with_viewer_;
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr sub_;
     std::unique_ptr<ORB_SLAM3::System> SLAM_;

@@ -95,19 +95,18 @@ add_executable(track_rgbl_node src/track_rgbl_node.cpp)
 ament_target_dependencies(track_rgbl_node rclcpp sensor_msgs OpenCV cv_bridge Eigen3 Pangolin)
 target_link_libraries(track_rgbl_node ${PROJECT_NAME})
 
+add_executable(track_stereo_node src/track_stereo_node.cpp)
+ament_target_dependencies(track_stereo_node rclcpp sensor_msgs OpenCV cv_bridge Eigen3 Pangolin)
+target_link_libraries(track_stereo_node ${PROJECT_NAME})
+
 install(TARGETS
   ${PROJECT_NAME}
   track_monocular_node
   track_rgbl_node
+  track_stereo_node
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}
-)
-
-install(FILES
-  ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
-  ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
-  DESTINATION lib
 )
 
 install(DIRECTORY include/ DESTINATION include)

@@ -62,7 +62,6 @@ def generate_launch_description():
                 {'slam_vocab_path': LaunchConfiguration('slam_vocab_path')},
                 {'slam_config_path': LaunchConfiguration('slam_config_path')},
                 {'with_viewer': LaunchConfiguration('with_viewer')}
-            ],
-            emulate_tty=True
+            ]
         )
     ])
